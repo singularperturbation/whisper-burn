@@ -152,6 +152,7 @@ fn mels_to_text<B: Backend>(
     mels: Tensor<B, 3>,
     prev_nonspecial_tokens: &[usize],
     padding: usize,
+    allowed_tokens: Option<AllowedTokensConfig>,
 ) -> token::Result<(String, Vec<usize>)> {
     let device = mels.device();
 
@@ -268,14 +269,21 @@ fn mels_to_text<B: Backend>(
         .to_device(&device);
 
         let logits = whisper.forward_decoder(token_tensor, encoder_output.clone().repeat(0, beams.len()));
+        // TODO: This is where we would be doing biasing
         let logits = if max_seq_len > 5 {
             logits
         } else {
             logits + special_tokens_maskout.clone().unsqueeze()
         };
         let log_probs = log_softmax(logits, 2);
+        let log_prob_dims = log_probs.dims();
 
-        let [n_batch, n_token, n_dict] = log_probs.dims();
+        if let Some(token_cfg) = allowed_tokens {
+            let mut mask: Tensor = allowed_tokens.to_mask(&log_prob_dims);
+            mask = mask.to_device(log_probs.device());
+            log_probs *= mask;
+        }
+        let [n_batch, n_token, n_dict] = log_prob_dims;
         let beam_log_probs = beams.iter().enumerate().map(|(i, beam)| {
             let batch = i;
             let token_index = beam.seq.len() - 1;

@@ -3,8 +3,8 @@ use std::iter;
 
 use whisper::helper::*;
 use whisper::model::*;
-use whisper::{token, token::Language};
 use whisper::transcribe::waveform_to_text;
+use whisper::{token, token::Language};
 
 use strum::IntoEnumIterator;
 
@@ -97,7 +97,7 @@ fn main() {
 
     let lang_str = &args[3];
     let lang = match Language::iter().find(|lang| lang.as_str() == lang_str) {
-        Some(lang) => lang, 
+        Some(lang) => lang,
         None => {
             eprintln!("Invalid language abbreviation: {}", lang_str);
             process::exit(1);
@@ -156,4 +156,12 @@ fn main() {
     });
 
     println!("Transcription finished.");
+
+    let tokens_as_csv: String = tokens
+        .into_iter()
+        .map(|t: usize| t.to_string())
+        .collect::<Vec<String>>()
+        .join(",");
+
+    println!("Tokens: {tokens_as_csv}");
 }

@@ -1,6 +1,8 @@
 pub mod load;
 
 use std::f32::NEG_INFINITY;
+use num_traits::zero;
+use serde;
 
 use burn::{
     config::Config,
@@ -10,13 +12,26 @@ use burn::{
         conv::{Conv1d, Conv1dConfig, Conv1dRecord},
         PaddingConfig1d,
     },
-    tensor::{activation::softmax, backend::Backend, module::embedding, Distribution, Int, Tensor},
+    tensor::{activation::softmax, backend::Backend, module::embedding, Distribution, Int, Shape, Tensor},
 };
+
+#[derive(Config, Debug)]
+pub struct AllowedTokensConfig {
+    allowed_tokens: Vec<usize>
+}
+
+impl AllowedTokensConfig {
+    /// Converts list of allowed tokens into (B, vocab_size) mask
+    pub fn to_mask<B: Backend>(dims: [usize; 2]) -> Tensor<B, 2> {
+        Tensor::<B, 2>::ones(Shape::from(dims))
+    }
+}
 
 #[derive(Config, Debug)]
 pub struct WhisperConfig {
     audio_encoder_config: AudioEncoderConfig,
     text_decoder_config: TextDecoderConfig,
+    allowed_tokens: Option<AllowedTokensConfig>
 }
 
 impl WhisperConfig {
